@@ -1,7 +1,66 @@
---[[
-SMA power sensor
-@author ikubicki
-]]
+-- Power sensor type have no actions to handle
+-- To update power state, update property "value" and "power" with the same floating point number. 
+-- Eg. 
+-- self:updateProperty("value", 2801.96) 
+-- self:updateProperty("power", 2801.96) 
+
+-- To update controls you can use method self:updateView(<component ID>, <component property>, <desired value>). Eg:  
+-- self:updateView("slider", "value", "55") 
+-- self:updateView("button1", "text", "MUTE") 
+-- self:updateView("label", "text", "TURNED ON") 
+
+-- This is QuickApp inital method. It is called right after your QuickApp starts (after each save or on gateway startup). 
+-- Here you can set some default values, setup http connection or get QuickApp variables.
+-- To learn more, please visit: 
+--    * https://manuals.fibaro.com/home-center-3/
+--    * https://manuals.fibaro.com/home-center-3-quick-apps/
+
+function QuickApp:onInit()
+    self:debug("onInit")
+    self.httpClient = net.HTTPClient({timeout=3000})
+    self.site = self:getVariable("site")
+
+    self:getPower()
+end
+
+function QuickApp:updateView()
+    self:updateView("label1", "text", "Device on") -- updating the text for 'label1'.
+    self:updateView("button1", "text", "on") -- updating the text for 'button1'.
+    self:updateView("slider1", "value", "99") -- updating the text for 'slider1'.
+end
+
+-- An example of a GET inquiry 
+-- self.http must have been previously created by net.HTTPClient
+-- {"dt_config_changed":"2021-11-26T15:34:20+00:00","inverters":{"154E41209290014":{"sn":"154E41209290014","dt_latest_msg":"2022-03-02T17:52:49+00:00","out_ac_power":144,"out_ac_energy_total":578,"error":null,"grid_turned_off":false,"health":"OK"}},"stats":{"graphs":{"pv_power":{"154E41209290014":{"2022-03-03 00:00:00":0,"2022-03-03 00:15:00":0,"2022-03-03 00:30:00":0,"2022-03-03 00:45:00":0,"2022-03-03 01:00:00":0,"2022-03-03 01:15:00":0,"2022-03-03 01:30:00":0,"2022-03-03 01:45:00":0,"2022-03-03 02:00:00":0,"2022-03-03 02:15:00":0,"2022-03-03 02:30:00":0,"2022-03-03 02:45:00":0,"2022-03-03 03:00:00":0,"2022-03-03 03:15:00":0,"2022-03-03 03:30:00":0}},"no_comms":[{"start":"2022-03-03T00:00:00+01:00","end":null}]},"kpis":{"pv_now":0}}}
+function QuickApp:getPower()
+    local address = "https://my.autarco.com/api/m1/site/" .. self.site .. "/power"
+
+    self.http:request(address, {
+        options={
+            headers = { 
+                Authorization = "Basic am9vc3RAYmFhaWouYW1zdGVyZGFtOmkzaDk5Y2ls"
+            },
+            checkCertificate = true,
+            method = 'GET'
+        },
+        success = function(response)
+            self:debug("response status:", response.status) 
+            self:debug("headers:", response.headers["Content-Type"]) 
+            local data = json.decode(response.data)  
+            if data.stats and data.contents.kpis and data.contents.kpis.pv_now then
+                local pv_now = data.contents.kpis.pv_now
+                self:debug(pv_now)
+                self:updateView("pv_now", "text", pv_now) 
+                self:updateProperty("value", pv_now) 
+                self:updateProperty("power", pv_now) 
+
+            end
+        end,
+        error = function(error)
+            self:debug('error: ' .. json.encode(error))
+        end
+    }) 
+end
 
 function QuickApp:onInit()
     self.config = Config:new(self)
