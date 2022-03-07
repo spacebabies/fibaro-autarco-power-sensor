@@ -62,11 +62,13 @@ end
 -- {"dt_config_changed":"2021-11-26T15:34:20+00:00","inverters":{"154E41209290014":{"sn":"154E41209290014","dt_latest_msg":"2022-03-02T17:52:49+00:00","out_ac_power":144,"out_ac_energy_total":578,"error":null,"grid_turned_off":false,"health":"OK"}},"stats":{"graphs":{"pv_power":{"154E41209290014":{"2022-03-03 00:00:00":0,"2022-03-03 00:15:00":0,"2022-03-03 00:30:00":0,"2022-03-03 00:45:00":0,"2022-03-03 01:00:00":0,"2022-03-03 01:15:00":0,"2022-03-03 01:30:00":0,"2022-03-03 01:45:00":0,"2022-03-03 02:00:00":0,"2022-03-03 02:15:00":0,"2022-03-03 02:30:00":0,"2022-03-03 02:45:00":0,"2022-03-03 03:00:00":0,"2022-03-03 03:15:00":0,"2022-03-03 03:30:00":0}},"no_comms":[{"start":"2022-03-03T00:00:00+01:00","end":null}]},"kpis":{"pv_now":0}}}
 function QuickApp:getPower()
     local address = "https://my.autarco.com/api/m1/site/" .. self.site .. "/power"
+    local mime = require("mime")
+
 
     self.http:request(address, {
         options={
             headers = {
-                Authorization = "Basic am9vc3RAYmFhaWouYW1zdGVyZGFtOmkzaDk5Y2ls"
+                Authorization = "Basic " .. (mime.b64(self.username .. ":" .. self.password))
             },
             checkCertificate = true,
             method = 'GET'
