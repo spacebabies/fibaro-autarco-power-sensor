@@ -31,7 +31,7 @@ end
 
 --[[
 This function takes variables and sets as global variables if those are not set already.
-This way, adding other devices might be optional and leaves option for users, 
+This way, adding other devices might be optional and leaves option for users,
 what they want to add into HC3 virtual devices.
 ]]
 function Config:init()
