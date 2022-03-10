@@ -1,52 +1,31 @@
--- Power sensor type have no actions to handle
--- To update power state, update property "value" and "power" with the same floating point number.
--- Eg.
--- self:updateProperty("value", 2801.96)
--- self:updateProperty("power", 2801.96)
-
--- To update controls you can use method self:updateView(<component ID>, <component property>, <desired value>). Eg:
--- self:updateView("slider", "value", "55")
--- self:updateView("button1", "text", "MUTE")
--- self:updateView("label", "text", "TURNED ON")
-
--- This is QuickApp inital method. It is called right after your QuickApp starts (after each save or on gateway startup).
--- Here you can set some default values, setup http connection or get QuickApp variables.
--- To learn more, please visit:
---    * https://manuals.fibaro.com/home-center-3/
---    * https://manuals.fibaro.com/home-center-3-quick-apps/
-
 -- Sample class for handling binary switch logic. You can create as many classes as you need.
 -- Each device type you create should have its own class which inherits from the QuickAppChild type.
-class 'CurrentPower' (QuickAppChild)
-function CurrentPower:__init(device)
-  self:debug("CurrentPower init")
-
+class 'currentPower' (QuickAppChild)
+function currentPower:__init(device)
   QuickAppChild.__init(self, device)
+  self:debug("currentPower initialized")
 end
-
-function CurrentPower:updateValue(data)
+function currentPower:updateValue(data)
   self:debug(data)
 
   self:updateProperty("value", tonumber(data.stats.kpis.pw_now))
-  self:updateProperty("unit", "kWh")
+  self:updateProperty("unit", "W")
 end
 
 function QuickApp:onInit()
     self:debug("onInit")
     self.httpClient = net.HTTPClient({timeout=3000})
     self.site = self:getVariable("site")
-    self.username = self::getVariable("username")
-    self.password = self::getVariable("password")
+    self.username = self:getVariable("username")
+    self.password = self:getVariable("password")
 
-    self:initChildDevices({
-      ["com.fibaro.enerygyMeter"] = CurrentPower
-    })
-
-    -- Print all child devices.
-    self:debug("Child devices:")
-    for id,device in pairs(self.childDevices) do
-      self:debug("[", id, "]", device.name, ", type of: ", device.type)
-    end
+    QuickApp:createChild{
+      className = "QuickAppChild",      -- class name of child object
+      name = "CurrentPower",                  -- Name of child device
+      type = "com.fibaro.energyMeter", -- Type of child device
+      properties = {},                  -- Initial properties
+      interfaces = {},                  -- Initial interfaces
+    }
 
     self:getPower()
 end
@@ -64,11 +43,10 @@ function QuickApp:getPower()
     local address = "https://my.autarco.com/api/m1/site/" .. self.site .. "/power"
     local mime = require("mime")
 
-
     self.http:request(address, {
         options={
             headers = {
-                Authorization = "Basic " .. (mime.b64(self.username .. ":" .. self.password))
+                Authorization = "Basic " .. (QuickApp:encodeBase64(self.username .. ":" .. self.password))
             },
             checkCertificate = true,
             method = 'GET'
@@ -95,12 +73,9 @@ end
 function QuickApp:onInit()
   self:debug("onInit")
   self:setupChildDevices()
-  -- self.i18n = i18n:new(api.get("/settings/info").defaultLanguage)
   -- self:trace('')
-  -- self:trace(self.i18n:get('name'))
   -- self:updateProperty('manufacturer', 'SMA')
   -- self:updateProperty('manufacturer', 'Power sensor')
-  -- self:updateView("button1", "text", self.i18n:get('refresh'))
   self:run()
 end
 
@@ -109,24 +84,24 @@ function QuickApp:run()
     local interval = self.config:getTimeoutInterval()
     if (interval > 0) then
         fibaro.setTimeout(interval, function() self:run() end)
-    end
+    endel
 end
 
-function QuickApp:button1Event()
+=function QuickApp:pullDataFromInverter()
+    self:updateView("button1", "text", "Even wachten...")
+    local sid = false
+    local errorCallback = function(error)
+        self:updateView("button1", "text", "Updaten")
+        Quickfunction QuickApp:button1Event()
     self:pullDataFromInverter()
 end
 
-function QuickApp:pullDataFromInverter()
-    self:updateView("button1", "text", self.i18n:get('please-wait'))
-    local sid = false
-    local errorCallback = function(error)
-        self:updateView("button1", "text", self.i18n:get('refresh'))
-        QuickApp:error(json.encode(error))
+App:error(json.encode(error))
     end
     local logoutCallback = function()
-        self:updateView("label1", "text", string.format(self.i18n:get('last-update'), os.date('%Y-%m-%d %H:%M:%S')))
-        self:updateView("button1", "text", self.i18n:get('refresh'))
-        self:trace(self.i18n:get('device-updated'))
+        self:updateView("label1", "text", string.format("Laatst geüpdatet", os.date('%Y-%m-%d %H:%M:%S')))
+        self:updateView("button1", "text", "Refresh")
+        self:trace("geüpdatet")
     end
     local valuesCallback = function(res)
         if res and res.result then
@@ -162,8 +137,10 @@ function QuickApp:setupChildDevices()
     value = 0,
     unit = ""
   })
-  )
-function QuickApp:createChild(name, type="com.fibaro.energyMeter", uid)
+end
+
+function QuickApp:createChild(name, type, uid)
+  local type = type or "com.fibaro.energyMeter"
   local child = self:createChildDevice({
     name = name,
     type = type
