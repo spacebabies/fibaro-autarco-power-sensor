@@ -1,39 +1,48 @@
+function fibaro.installFibaroExtra()local a="fibaroExtra"if fibaro.FIBARO_EXTRA then return end;local b="https://raw.githubusercontent.com/jangabrielsson/TQAE/main/lib/"..a..".lua"net.HTTPClient():request(b,{options={method='GET',checkCertificate=false,timeout=20000},success=function(c)if c.status==200 then local d={isMain=false,type='lua',isOpen=false,name=a,content=c.data}fibaro.debug(__TAG,"Installing ",a)local e,c=api.post("/quickApp/"..plugin.mainDeviceId.."/files",d)if c~=200 then fibaro.error(__TAG,"Installing ",a," - ",c)end else fibaro.error(__TAG,"Error ",c.status," fetching ",b)end end,error=function(c)fibaro.error(__TAG,"Error ",c," fetching ",b)end})end
+
+MyAutarcoDevices = {
+  ["pv_now"] = 'CurrentPower'
+}
+
+Autarco2Child = {}
+
 -- Sample class for handling binary switch logic. You can create as many classes as you need.
 -- Each device type you create should have its own class which inherits from the QuickAppChild type.
-class 'currentPower' (QuickAppChild)
-function currentPower:__init(device)
+class 'CurrentPower'(QuickAppChild)
+function CurrentPower:__init(device)
   QuickAppChild.__init(self, device)
-  self:debug("currentPower initialized")
+  self.identifier = self:getVariable("identifier")
 end
-function currentPower:updateValue(data)
-  self:debug(data)
-
-  self:updateProperty("value", tonumber(data.stats.kpis.pw_now))
-  self:updateProperty("unit", "W")
-end
+-- function CurrentPower:updateValue(data)
+--   self:updateProperty("value", tonumber(data.stats.kpis.pw_now))
+--   self:updateProperty("unit", "W")
+-- end
 
 function QuickApp:onInit()
-    self:debug("onInit")
-    self.httpClient = net.HTTPClient({timeout=3000})
-    self.site = self:getVariable("site")
-    self.username = self:getVariable("username")
-    self.password = self:getVariable("password")
+  fibaro.installFibaroExtra()
 
-    QuickApp:createChild{
-      className = "QuickAppChild",      -- class name of child object
-      name = "CurrentPower",                  -- Name of child device
-      type = "com.fibaro.energyMeter", -- Type of child device
-      properties = {},                  -- Initial properties
-      interfaces = {},                  -- Initial interfaces
-    }
+  self.httpClient = net.HTTPClient({timeout=3000})
+  self.site = self:getVariable("site")
+  self.username = self:getVariable("username")
+  self.password = self:getVariable("password")
 
-    self:getPower()
-end
+  self:loadChildren()
+  for id,child in pairs(self.childDevices) do
+    Autarco2Child[id] = child
+  end
 
-function QuickApp:updateView()
-    self:updateView("label1", "text", "Device on") -- updating the text for 'label1'.
-    self:updateView("button1", "text", "on") -- updating the text for 'button1'.
-    self:updateView("slider1", "value", "99") -- updating the text for 'slider1'.
+  for id,child in pairs(MyAutarcoDevices) do
+    if not Autarco2Child[id] then
+      Autarco2Child[id] = self:createChild{
+        type = 'com.fibaro.energyMeter',
+        name = name,
+        className = 'Meter',
+        quickVars = { identifier = identifier },
+      }
+    end
+  end
+
+  setInterval(function() self:getPower end, 1500)
 end
 
 -- An example of a GET inquiry
